@@ -1,0 +1,205 @@
+import React, { useState } from 'react';
+import { Plus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
+
+export default function HorizontalProductEntry({ onProductAdded, isDark }) {
+  const [formData, setFormData] = useState({
+    slNo: '',
+    productName: '',
+    costPrice: '',
+    sellPrice: '',
+    stockQty: '',
+    supplierUrl: ''
+  });
+  
+  const [errors, setErrors] = useState({});
+  const [saving, setSaving] = useState(false);
+
+  const validate = () => {
+    const newErrors = {};
+    
+    if (!formData.productName.trim()) {
+      newErrors.productName = 'Required';
+    }
+    
+    if (!formData.sellPrice || parseFloat(formData.sellPrice) <= 0) {
+      newErrors.sellPrice = 'Must be > 0';
+    }
+    
+    if (formData.costPrice && parseFloat(formData.costPrice) < 0) {
+      newErrors.costPrice = 'Must be ≥ 0';
+    }
+    
+    if (formData.stockQty && parseFloat(formData.stockQty) < 0) {
+      newErrors.stockQty = 'Must be ≥ 0';
+    }
+
+    if (formData.supplierUrl && !formData.supplierUrl.match(/^https?:\/\/.+/)) {
+      newErrors.supplierUrl = 'Must start with http:// or https://';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleAdd = async () => {
+    if (!validate()) return;
+
+    setSaving(true);
+    
+    const productData = {
+      slNo: formData.slNo || `MAN${Date.now()}`,
+      name: formData.productName.trim(),
+      costPrice: parseFloat(formData.costPrice) || 0,
+      sellPrice: parseFloat(formData.sellPrice),
+      mrp: parseFloat(formData.sellPrice),
+      stock: parseInt(formData.stockQty) || 0,
+      supplierUrl: formData.supplierUrl.trim() || undefined,
+      category: 'Manual Entry',
+      tags: parseInt(formData.stockQty) > 0 ? ['In Stock'] : ['Out of Stock'],
+      healthScore: 100
+    };
+
+    try {
+      await onProductAdded(productData);
+      
+      // Clear form
+      setFormData({
+        slNo: '',
+        productName: '',
+        costPrice: '',
+        sellPrice: '',
+        stockQty: '',
+        supplierUrl: ''
+      });
+      setErrors({});
+    } catch (error) {
+      // Error already handled by parent
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleAdd();
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2">
+        <div className="flex-shrink-0 w-20">
+          <Input
+            placeholder="SL No"
+            value={formData.slNo}
+            onChange={(e) => setFormData({ ...formData, slNo: e.target.value })}
+            onKeyPress={handleKeyPress}
+            className={cn(
+              "h-9 text-sm rounded-lg shadow-sm",
+              isDark ? "bg-slate-700 border-slate-600" : "bg-white border-gray-200",
+              errors.slNo && "border-red-500"
+            )}
+          />
+        </div>
+
+        <div className="flex-1 min-w-[140px]">
+          <Input
+            placeholder="Product Name *"
+            value={formData.productName}
+            onChange={(e) => setFormData({ ...formData, productName: e.target.value })}
+            onKeyPress={handleKeyPress}
+            className={cn(
+              "h-9 text-sm rounded-lg shadow-sm",
+              isDark ? "bg-slate-700 border-slate-600" : "bg-white border-gray-200",
+              errors.productName && "border-red-500 focus:ring-red-500"
+            )}
+          />
+        </div>
+
+        <div className="flex-shrink-0 w-24">
+          <Input
+            type="number"
+            placeholder="Cost ₹"
+            value={formData.costPrice}
+            onChange={(e) => setFormData({ ...formData, costPrice: e.target.value })}
+            onKeyPress={handleKeyPress}
+            className={cn(
+              "h-9 text-sm rounded-lg shadow-sm",
+              isDark ? "bg-slate-700 border-slate-600" : "bg-white border-gray-200",
+              errors.costPrice && "border-red-500"
+            )}
+          />
+        </div>
+
+        <div className="flex-shrink-0 w-24">
+          <Input
+            type="number"
+            placeholder="Sell ₹ *"
+            value={formData.sellPrice}
+            onChange={(e) => setFormData({ ...formData, sellPrice: e.target.value })}
+            onKeyPress={handleKeyPress}
+            className={cn(
+              "h-9 text-sm rounded-lg shadow-sm",
+              isDark ? "bg-slate-700 border-slate-600" : "bg-white border-gray-200",
+              errors.sellPrice && "border-red-500 focus:ring-red-500"
+            )}
+          />
+        </div>
+
+        <div className="flex-shrink-0 w-20">
+          <Input
+            type="number"
+            placeholder="Stock"
+            value={formData.stockQty}
+            onChange={(e) => setFormData({ ...formData, stockQty: e.target.value })}
+            onKeyPress={handleKeyPress}
+            className={cn(
+              "h-9 text-sm rounded-lg shadow-sm",
+              isDark ? "bg-slate-700 border-slate-600" : "bg-white border-gray-200",
+              errors.stockQty && "border-red-500"
+            )}
+          />
+        </div>
+
+        <Button
+          onClick={handleAdd}
+          disabled={saving}
+          className="h-9 px-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-lg shadow-md"
+        >
+          <Plus className="w-4 h-4 mr-1" />
+          {saving ? 'Adding...' : 'Add'}
+        </Button>
+      </div>
+
+      {/* Supplier URL - Full Width */}
+      <div className="w-full">
+        <Input
+          placeholder="Supplier Website URL (optional, e.g., https://example.com/product)"
+          value={formData.supplierUrl}
+          onChange={(e) => setFormData({ ...formData, supplierUrl: e.target.value })}
+          onKeyPress={handleKeyPress}
+          className={cn(
+            "h-10 text-sm rounded-lg shadow-sm",
+            isDark ? "bg-slate-700 border-slate-600" : "bg-white border-gray-200",
+            errors.supplierUrl && "border-red-500 focus:ring-red-500"
+          )}
+        />
+      </div>
+
+      {/* Error Messages */}
+      {Object.keys(errors).length > 0 && (
+        <div className="flex flex-wrap gap-3 text-xs text-red-500">
+          {errors.productName && <span>• {errors.productName}</span>}
+          {errors.sellPrice && <span>• Sell price {errors.sellPrice}</span>}
+          {errors.costPrice && <span>• Cost {errors.costPrice}</span>}
+          {errors.stockQty && <span>• Stock {errors.stockQty}</span>}
+          {errors.supplierUrl && <span>• Supplier URL {errors.supplierUrl}</span>}
+        </div>
+      )}
+    </div>
+  );
+}

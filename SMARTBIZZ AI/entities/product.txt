@@ -1,0 +1,76 @@
+{
+  "name": "Product",
+  "type": "object",
+  "properties": {
+    "slNo": {
+      "type": "string",
+      "description": "Serial number or SKU"
+    },
+    "name": {
+      "type": "string",
+      "description": "Product name"
+    },
+    "category": {
+      "type": "string",
+      "description": "Product category",
+      "default": "General"
+    },
+    "costPrice": {
+      "type": "number",
+      "description": "Cost price per unit"
+    },
+    "sellPrice": {
+      "type": "number",
+      "description": "Selling price per unit"
+    },
+    "mrp": {
+      "type": "number",
+      "description": "Maximum retail price"
+    },
+    "stock": {
+      "type": "number",
+      "description": "Current stock quantity",
+      "default": 0
+    },
+    "discount": {
+      "type": "number",
+      "description": "Discount amount or percentage",
+      "default": 0
+    },
+    "taxPercent": {
+      "type": "number",
+      "description": "Tax percentage",
+      "default": 0
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Tags like Low stock, Slow-moving, etc.",
+      "default": []
+    },
+    "store": {
+      "type": "string",
+      "description": "Store name (DMart, Smart, Big Bazaar, etc.)"
+    },
+    "supplierUrl": {
+      "type": "string",
+      "description": "Supplier website URL for ordering/restocking"
+    },
+    "healthScore": {
+      "type": "number",
+      "description": "Inventory health score (0-100)",
+      "default": 100
+    },
+    "lowStockThreshold": {
+      "type": "number",
+      "description": "Alert when stock falls below this",
+      "default": 10
+    }
+  },
+  "required": [
+    "name",
+    "sellPrice"
+  ]
+}

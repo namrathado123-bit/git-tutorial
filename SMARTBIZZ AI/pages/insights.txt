@@ -1,0 +1,184 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
+import { base44 } from '@/api/base44Client';
+import { TrendingUp, Package, Tag, Users, AlertTriangle, Sparkles, ChevronRight } from 'lucide-react';
+import BottomNav from '@/components/layout/BottomNav';
+import { cn } from '@/lib/utils';
+
+const insightCards = [
+  {
+    id: 'restock',
+    icon: Package,
+    title: 'Restock Recommendations',
+    description: 'AI-predicted stockouts and optimal reorder quantities',
+    color: 'from-red-500 to-orange-600',
+    page: 'RestockAlertDetail'
+  },
+  {
+    id: 'discount',
+    icon: Tag,
+    title: 'Discount Optimization',
+    description: 'Maximize revenue with smart pricing strategies',
+    color: 'from-amber-500 to-yellow-600',
+    page: 'DiscountOptimization'
+  },
+  {
+    id: 'anomaly',
+    icon: AlertTriangle,
+    title: 'Anomaly Detection',
+    description: 'Unusual patterns in sales or inventory detected',
+    color: 'from-purple-500 to-pink-600',
+    page: 'AnomalyDetection'
+  },
+  {
+    id: 'atrisk',
+    icon: Users,
+    title: 'At-Risk Customers',
+    description: 'Identify and retain customers likely to churn',
+    color: 'from-blue-500 to-indigo-600',
+    page: 'AtRiskSegment'
+  }
+];
+
+export default function Insights() {
+  const [isDark, setIsDark] = useState(false);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('smartbiz_theme');
+    if (savedTheme) setIsDark(savedTheme === 'dark');
+  }, []);
+
+  const loadData = async () => {
+    try {
+      const productsData = await base44.entities.Product.list('-created_date', 100);
+      setProducts(productsData || []);
+    } catch (error) {
+      console.error('Failed to load data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const lowStockCount = products.filter(p => (p.stock || 0) < (p.lowStockThreshold || 10)).length;
+
+  return (
+    <div className={cn(
+      "min-h-screen pb-20 transition-colors",
+      isDark ? "bg-slate-900" : "bg-gradient-to-br from-slate-50 to-indigo-50"
+    )}>
+      {/* Header */}
+      <div className={cn(
+        "sticky top-0 z-30 backdrop-blur-lg border-b",
+        isDark ? "bg-slate-900/95 border-slate-800" : "bg-white/95 border-gray-200"
+      )}>
+        <div className="max-w-lg mx-auto px-6 py-4">
+          <div className="flex items-center gap-2">
+            <Sparkles className={cn("w-6 h-6", isDark ? "text-indigo-400" : "text-indigo-600")} />
+            <h1 className={cn("text-2xl font-bold", isDark ? "text-white" : "text-gray-900")}>
+              AI Insights
+            </h1>
+          </div>
+          <p className={cn("text-sm", isDark ? "text-gray-400" : "text-gray-600")}>
+            Smart recommendations powered by AI
+          </p>
+        </div>
+      </div>
+
+      <div className="max-w-lg mx-auto px-6 py-6 space-y-4">
+        {/* Active Alerts */}
+        {lowStockCount > 0 && (
+          <div className={cn(
+            "rounded-2xl p-4 border-2",
+            isDark ? "bg-red-500/10 border-red-500/30" : "bg-red-50 border-red-200"
+          )}>
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-red-500">
+                <AlertTriangle className="w-5 h-5 text-white" />
+              </div>
+              <div className="flex-1">
+                <p className={cn("font-semibold", isDark ? "text-red-400" : "text-red-700")}>
+                  {lowStockCount} Critical Stock Alerts
+                </p>
+                <p className={cn("text-sm", isDark ? "text-red-300" : "text-red-600")}>
+                  Immediate action required
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Insight Cards */}
+        <div className="space-y-3">
+          {insightCards.map((card) => {
+            const Icon = card.icon;
+            
+            return (
+              <button
+                key={card.id}
+                onClick={() => navigate(createPageUrl(card.page))}
+                className={cn(
+                  "w-full rounded-2xl p-6 transition-all hover:scale-102 hover:shadow-xl text-left relative overflow-hidden",
+                  isDark ? "bg-slate-800 border border-slate-700" : "bg-white shadow-md"
+                )}
+              >
+                {/* Gradient background */}
+                <div className={cn(
+                  "absolute top-0 right-0 w-40 h-40 rounded-full opacity-10 blur-3xl transform translate-x-12 -translate-y-12 bg-gradient-to-br",
+                  card.color
+                )} />
+
+                <div className="relative z-10 flex items-start gap-4">
+                  <div className={cn(
+                    "p-3 rounded-xl bg-gradient-to-br shadow-lg",
+                    card.color
+                  )}>
+                    <Icon className="w-6 h-6 text-white" />
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <h3 className={cn("font-bold text-lg mb-1", isDark ? "text-white" : "text-gray-900")}>
+                      {card.title}
+                    </h3>
+                    <p className={cn("text-sm", isDark ? "text-gray-400" : "text-gray-600")}>
+                      {card.description}
+                    </p>
+                  </div>
+
+                  <ChevronRight className={cn("w-5 h-5 flex-shrink-0 mt-1", isDark ? "text-gray-500" : "text-gray-400")} />
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* AI Info */}
+        <div className={cn(
+          "rounded-2xl p-6 border",
+          isDark ? "bg-slate-800/50 border-slate-700" : "bg-indigo-50 border-indigo-200"
+        )}>
+          <div className="flex items-start gap-3">
+            <Sparkles className={cn("w-5 h-5 flex-shrink-0 mt-0.5", isDark ? "text-indigo-400" : "text-indigo-600")} />
+            <div>
+              <p className={cn("font-semibold mb-1", isDark ? "text-white" : "text-gray-900")}>
+                Powered by Advanced AI
+              </p>
+              <p className={cn("text-sm", isDark ? "text-gray-400" : "text-gray-700")}>
+                Our AI analyzes your sales patterns, inventory levels, and market trends to provide actionable recommendations that help grow your business.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <BottomNav isDark={isDark} />
+    </div>
+  );
+}

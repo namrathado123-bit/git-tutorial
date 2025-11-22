@@ -1,0 +1,218 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
+import { base44 } from '@/api/base44Client';
+import { ArrowLeft, Receipt, Calendar, Search } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import BottomNav from '@/components/layout/BottomNav';
+import { cn } from '@/lib/utils';
+
+export default function BillingHistory() {
+  const [bills, setBills] = useState([]);
+  const [filteredBills, setFilteredBills] = useState([]);
+  const [search, setSearch] = useState('');
+  const [isDark, setIsDark] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('smartbiz_theme');
+    if (savedTheme) setIsDark(savedTheme === 'dark');
+  }, []);
+
+  useEffect(() => {
+    if (search) {
+      setFilteredBills(
+        bills.filter(bill => 
+          bill.billNumber?.toLowerCase().includes(search.toLowerCase()) ||
+          bill.customerName?.toLowerCase().includes(search.toLowerCase())
+        )
+      );
+    } else {
+      setFilteredBills(bills);
+    }
+  }, [search, bills]);
+
+  const loadData = async () => {
+    try {
+      const billsData = await base44.entities.Bill.list('-created_date', 100);
+      setBills(billsData || []);
+      setFilteredBills(billsData || []);
+    } catch (error) {
+      console.error('Failed to load bills:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <div className={cn(
+      "min-h-screen pb-20 transition-colors",
+      isDark ? "bg-slate-900" : "bg-gradient-to-br from-slate-50 to-indigo-50"
+    )}>
+      {/* Header */}
+      <div className={cn(
+        "sticky top-0 z-30 backdrop-blur-lg border-b",
+        isDark ? "bg-slate-900/95 border-slate-800" : "bg-white/95 border-gray-200"
+      )}>
+        <div className="max-w-lg mx-auto px-6 py-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate(createPageUrl('Home'))}
+            className="mb-2"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back
+          </Button>
+          <h1 className={cn("text-2xl font-bold", isDark ? "text-white" : "text-gray-900")}>
+            Billing History
+          </h1>
+          <p className={cn("text-sm", isDark ? "text-gray-400" : "text-gray-600")}>
+            View all past transactions
+          </p>
+        </div>
+      </div>
+
+      <div className="max-w-lg mx-auto px-6 py-6 space-y-4">
+        {/* Search */}
+        <div className="relative">
+          <Search className={cn(
+            "absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5",
+            isDark ? "text-gray-500" : "text-gray-400"
+          )} />
+          <Input
+            placeholder="Search by invoice number or customer..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className={cn(
+              "pl-10 h-12",
+              isDark ? "bg-slate-800 border-slate-700 text-white" : "bg-white"
+            )}
+          />
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-3">
+          <div className={cn(
+            "rounded-xl p-4 text-center",
+            isDark ? "bg-slate-800 border border-slate-700" : "bg-white shadow-sm"
+          )}>
+            <p className={cn("text-2xl font-bold", isDark ? "text-indigo-400" : "text-indigo-600")}>
+              {bills.length}
+            </p>
+            <p className={cn("text-xs mt-1", isDark ? "text-gray-400" : "text-gray-600")}>
+              Total Bills
+            </p>
+          </div>
+          <div className={cn(
+            "rounded-xl p-4 text-center",
+            isDark ? "bg-slate-800 border border-slate-700" : "bg-white shadow-sm"
+          )}>
+            <p className={cn("text-2xl font-bold", isDark ? "text-emerald-400" : "text-emerald-600")}>
+              ₹{bills.reduce((sum, bill) => sum + (bill.total || 0), 0).toLocaleString()}
+            </p>
+            <p className={cn("text-xs mt-1", isDark ? "text-gray-400" : "text-gray-600")}>
+              Total Revenue
+            </p>
+          </div>
+          <div className={cn(
+            "rounded-xl p-4 text-center",
+            isDark ? "bg-slate-800 border border-slate-700" : "bg-white shadow-sm"
+          )}>
+            <p className={cn("text-2xl font-bold", isDark ? "text-blue-400" : "text-blue-600")}>
+              ₹{bills.length > 0 ? (bills.reduce((sum, bill) => sum + (bill.total || 0), 0) / bills.length).toFixed(0) : 0}
+            </p>
+            <p className={cn("text-xs mt-1", isDark ? "text-gray-400" : "text-gray-600")}>
+              Avg Value
+            </p>
+          </div>
+        </div>
+
+        {/* Bills List */}
+        <div className="space-y-2">
+          {filteredBills.map((bill) => (
+            <button
+              key={bill.id}
+              onClick={() => navigate(createPageUrl('InvoiceDetail') + ?id=${bill.id})}
+              className={cn(
+                "w-full text-left rounded-xl p-4 transition-all hover:scale-102",
+                isDark ? "bg-slate-800 border border-slate-700 hover:bg-slate-750" : "bg-white border border-gray-100 shadow-sm hover:shadow-md"
+              )}
+            >
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-start gap-3">
+                  <div className={cn(
+                    "p-2 rounded-lg",
+                    isDark ? "bg-indigo-500/20" : "bg-indigo-100"
+                  )}>
+                    <Receipt className={cn("w-5 h-5", isDark ? "text-indigo-400" : "text-indigo-600")} />
+                  </div>
+                  <div>
+                    <h4 className={cn("font-semibold", isDark ? "text-white" : "text-gray-900")}>
+                      {bill.billNumber}
+                    </h4>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Calendar className={cn("w-3 h-3", isDark ? "text-gray-500" : "text-gray-400")} />
+                      <p className={cn("text-sm", isDark ? "text-gray-400" : "text-gray-600")}>
+                        {new Date(bill.created_date).toLocaleDateString('en-IN', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric'
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className={cn("text-lg font-bold", isDark ? "text-emerald-400" : "text-emerald-600")}>
+                    ₹{bill.total?.toFixed(2)}
+                  </p>
+                  <Badge className={cn(
+                    "mt-1",
+                    bill.status === 'Completed' && "bg-emerald-100 text-emerald-700"
+                  )}>
+                    {bill.status}
+                  </Badge>
+                </div>
+              </div>
+
+              <div className={cn(
+                "text-sm pt-3 border-t flex items-center justify-between",
+                isDark ? "border-slate-700 text-gray-400" : "border-gray-100 text-gray-600"
+              )}>
+                <span>{bill.items?.length || 0} items</span>
+                <span>{bill.paymentMethod || 'Cash'}</span>
+              </div>
+            </button>
+          ))}
+
+          {filteredBills.length === 0 && (
+            <div className="text-center py-12">
+              <Receipt className={cn("w-16 h-16 mx-auto mb-4", isDark ? "text-gray-600" : "text-gray-400")} />
+              <p className={cn("text-lg", isDark ? "text-gray-400" : "text-gray-600")}>
+                {search ? 'No bills found' : 'No billing history yet'}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <BottomNav isDark={isDark} />
+    </div>
+  );
+}

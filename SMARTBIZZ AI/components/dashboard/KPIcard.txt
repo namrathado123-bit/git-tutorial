@@ -1,0 +1,61 @@
+import React from 'react';
+import { TrendingUp, TrendingDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+export default function KPICard({ title, value, change, icon: Icon, color, isDark, onClick }) {
+  const isPositive = change >= 0;
+
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "relative overflow-hidden rounded-3xl p-6 transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:-translate-y-2 text-left w-full active:scale-95 group",
+        isDark 
+          ? "bg-slate-800/80 backdrop-blur-xl border border-slate-700/50 shadow-[0px_8px_24px_rgba(0,0,0,0.4)] hover:shadow-[0_0_25px_rgba(79,155,255,0.3)]" 
+          : "bg-white/90 backdrop-blur-sm border border-gray-200/50 shadow-[0px_4px_16px_rgba(0,0,0,0.08)] hover:shadow-[0px_12px_32px_rgba(0,0,0,0.12)]"
+      )}
+    >
+      {/* Background gradient glow */}
+      <div className={cn(
+        "absolute top-0 right-0 w-32 h-32 rounded-full opacity-10 blur-3xl transform translate-x-12 -translate-y-12 transition-all duration-300 group-hover:opacity-20 group-hover:scale-125",
+        color
+      )} />
+
+      <div className="relative z-10">
+        <div className="flex items-start justify-between mb-3">
+          <p className={cn("text-sm font-medium", isDark ? "text-gray-400" : "text-gray-600")}>
+            {title}
+          </p>
+          <div className={cn("p-3 rounded-2xl transition-all duration-300 group-hover:scale-110 group-hover:rotate-6", color, "bg-opacity-20 shadow-lg")}>
+            <Icon className={cn("w-6 h-6", color.replace('bg-', 'text-'))} />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <p className={cn("text-3xl font-bold tracking-tight", isDark ? "text-white" : "text-gray-900")}>
+            {value}
+          </p>
+
+          {change !== undefined && (
+            <div className="flex items-center gap-1">
+              {isPositive ? (
+                <TrendingUp className="w-4 h-4 text-emerald-500" />
+              ) : (
+                <TrendingDown className="w-4 h-4 text-red-500" />
+              )}
+              <span className={cn(
+                "text-sm font-semibold",
+                isPositive ? "text-emerald-500" : "text-red-500"
+              )}>
+                {isPositive ? '+' : ''}{change}%
+              </span>
+              <span className={cn("text-xs", isDark ? "text-gray-500" : "text-gray-400")}>
+                vs last week
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+    </button>
+  );
+}

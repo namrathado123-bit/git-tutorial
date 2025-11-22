@@ -1,0 +1,53 @@
+{
+  "name": "UploadedDocument",
+  "type": "object",
+  "properties": {
+    "fileName": {
+      "type": "string",
+      "description": "Original file name"
+    },
+    "fileUrl": {
+      "type": "string",
+      "description": "URL to the uploaded file"
+    },
+    "fileType": {
+      "type": "string",
+      "description": "File MIME type or extension"
+    },
+    "extractedData": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "description": "Extracted product data from document"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Uploaded",
+        "Processing",
+        "Extracted",
+        "Failed"
+      ],
+      "default": "Uploaded"
+    },
+    "store": {
+      "type": "string",
+      "description": "Detected store name"
+    },
+    "documentDate": {
+      "type": "string",
+      "format": "date",
+      "description": "Date from the document"
+    },
+    "rowCount": {
+      "type": "number",
+      "description": "Number of rows extracted",
+      "default": 0
+    }
+  },
+  "required": [
+    "fileName",
+    "fileUrl"
+  ]
+}

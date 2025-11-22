@@ -1,0 +1,233 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
+import { base44 } from '@/api/base44Client';
+import { ArrowLeft, Package, AlertTriangle, TrendingUp, ShoppingCart } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import BottomNav from '@/components/layout/BottomNav';
+import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
+
+export default function RestockAlertDetail() {
+  const [products, setProducts] = useState([]);
+  const [isDark, setIsDark] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('smartbiz_theme');
+    if (savedTheme) setIsDark(savedTheme === 'dark');
+  }, []);
+
+  const loadData = async () => {
+    try {
+      const productsData = await base44.entities.Product.list('-created_date', 100);
+      const lowStock = (productsData || []).filter(p => (p.stock || 0) < (p.lowStockThreshold || 10));
+      setProducts(lowStock);
+    } catch (error) {
+      console.error('Failed to load products:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const chartData = products.slice(0, 5).map(p => ({
+    name: p.name?.substring(0, 15) || 'Product',
+    current: p.stock || 0,
+    recommended: (p.lowStockThreshold || 10) * 2
+  }));
+
+  const handleOrder = (product) => {
+    window.open("https://www.indiamart.com/", "_blank", "noopener,noreferrer");
+    toast.success(Opening IndiaMART to order ${product.name});
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <div className={cn(
+      "min-h-screen pb-20 transition-colors",
+      isDark ? "bg-slate-900" : "bg-gradient-to-br from-slate-50 to-indigo-50"
+    )}>
+      {/* Header */}
+      <div className={cn(
+        "sticky top-0 z-30 backdrop-blur-lg border-b",
+        isDark ? "bg-slate-900/95 border-slate-800" : "bg-white/95 border-gray-200"
+      )}>
+        <div className="max-w-lg mx-auto px-6 py-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate(createPageUrl('Insights'))}
+            className="mb-2"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back
+          </Button>
+          <h1 className={cn("text-2xl font-bold", isDark ? "text-white" : "text-gray-900")}>
+            Restock Recommendations
+          </h1>
+          <p className={cn("text-sm", isDark ? "text-gray-400" : "text-gray-600")}>
+            AI-predicted stockouts and reorder quantities
+          </p>
+        </div>
+      </div>
+
+      <div className="max-w-lg mx-auto px-6 py-6 space-y-6">
+        {/* Alert Summary */}
+        <div className={cn(
+          "rounded-2xl p-6 border-2",
+          isDark ? "bg-red-500/10 border-red-500/30" : "bg-red-50 border-red-200"
+        )}>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-3 rounded-xl bg-red-500">
+              <AlertTriangle className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <p className={cn("text-2xl font-bold", isDark ? "text-red-400" : "text-red-700")}>
+                {products.length} Products
+              </p>
+              <p className={cn("text-sm", isDark ? "text-red-300" : "text-red-600")}>
+                Need immediate restocking
+              </p>
+            </div>
+          </div>
+          <p className={cn("text-sm", isDark ? "text-red-300" : "text-red-700")}>
+            📊 Risk: High stockout probability within 48 hours
+          </p>
+        </div>
+
+        {/* Chart */}
+        {chartData.length > 0 && (
+          <div className={cn(
+            "rounded-2xl p-6 shadow-lg",
+            isDark ? "bg-slate-800 border border-slate-700" : "bg-white"
+          )}>
+            <h3 className={cn("font-bold mb-4", isDark ? "text-white" : "text-gray-900")}>
+              Current vs Recommended Stock
+            </h3>
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={chartData}>
+                <CartesianGrid 
+                  strokeDasharray="3 3" 
+                  stroke={isDark ? "#334155" : "#e5e7eb"}
+                />
+                <XAxis 
+                  dataKey="name" 
+                  stroke={isDark ? "#94a3b8" : "#6b7280"}
+                  style={{ fontSize: '11px' }}
+                />
+                <YAxis 
+                  stroke={isDark ? "#94a3b8" : "#6b7280"}
+                  style={{ fontSize: '11px' }}
+                />
+                <Tooltip 
+                  contentStyle={{
+                    backgroundColor: isDark ? '#1e293b' : '#ffffff',
+                    border: isDark ? '1px solid #334155' : '1px solid #e5e7eb',
+                    borderRadius: '8px'
+                  }}
+                />
+                <Bar dataKey="current" fill="#ef4444" name="Current Stock" />
+                <Bar dataKey="recommended" fill="#10b981" name="Recommended" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+
+        {/* Product List */}
+        <div className="space-y-3">
+          {products.map((product) => (
+            <div
+              key={product.id}
+              className={cn(
+                "rounded-xl p-4 shadow-sm",
+                isDark ? "bg-slate-800 border border-slate-700" : "bg-white"
+              )}
+            >
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex-1">
+                  <h4 className={cn("font-semibold", isDark ? "text-white" : "text-gray-900")}>
+                    {product.name}
+                  </h4>
+                  <p className={cn("text-sm", isDark ? "text-gray-400" : "text-gray-600")}>
+                    SKU: {product.slNo || 'N/A'}
+                  </p>
+                </div>
+                <div className={cn(
+                  "px-3 py-1 rounded-full text-xs font-medium",
+                  (product.stock || 0) === 0
+                    ? "bg-red-100 text-red-700"
+                    : "bg-amber-100 text-amber-700"
+                )}>
+                  {(product.stock || 0) === 0 ? 'Out of Stock' : 'Low Stock'}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4 mb-3 text-sm">
+                <div>
+                  <p className={cn("text-xs", isDark ? "text-gray-500" : "text-gray-400")}>
+                    Current
+                  </p>
+                  <p className={cn("font-bold text-red-500")}>
+                    {product.stock || 0}
+                  </p>
+                </div>
+                <div>
+                  <p className={cn("text-xs", isDark ? "text-gray-500" : "text-gray-400")}>
+                    Recommended
+                  </p>
+                  <p className={cn("font-bold text-emerald-500")}>
+                    {(product.lowStockThreshold || 10) * 2}
+                  </p>
+                </div>
+                <div>
+                  <p className={cn("text-xs", isDark ? "text-gray-500" : "text-gray-400")}>
+                    Order Qty
+                  </p>
+                  <p className={cn("font-bold", isDark ? "text-white" : "text-gray-900")}>
+                    {Math.max(0, (product.lowStockThreshold || 10) * 2 - (product.stock || 0))}
+                  </p>
+                </div>
+              </div>
+
+              <Button
+                onClick={() => handleOrder(product)}
+                className="w-full bg-emerald-600 hover:bg-emerald-700 rounded-2xl"
+                size="sm"
+              >
+                <ShoppingCart className="w-4 h-4 mr-2" />
+                🛒 Order Now
+              </Button>
+            </div>
+          ))}
+
+          {products.length === 0 && (
+            <div className="text-center py-12">
+              <Package className={cn("w-16 h-16 mx-auto mb-4", isDark ? "text-gray-600" : "text-gray-400")} />
+              <p className={cn("text-lg font-semibold mb-2", isDark ? "text-white" : "text-gray-900")}>
+                All Stocked Up! 🎉
+              </p>
+              <p className={cn("text-sm", isDark ? "text-gray-400" : "text-gray-600")}>
+                Your inventory levels look healthy
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <BottomNav isDark={isDark} />
+    </div>
+  );
+}

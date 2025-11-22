@@ -1,0 +1,57 @@
+import React from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { Home, Receipt, Package, Zap, User } from 'lucide-react';
+import { createPageUrl } from '@/utils';
+import { cn } from '@/lib/utils';
+
+const navItems = [
+  { name: 'Home', icon: Home, page: 'Home' },
+  { name: 'Billing', icon: Receipt, page: 'Billing' },
+  { name: 'Inventory', icon: Package, page: 'Inventory' },
+  { name: 'Insights', icon: Zap, page: 'Insights' },
+  { name: 'Profile', icon: User, page: 'Profile' }
+];
+
+export default function BottomNav({ isDark }) {
+  const location = useLocation();
+  
+  const isActive = (page) => {
+    return location.pathname === createPageUrl(page);
+  };
+
+  return (
+    <nav className={cn(
+      "fixed bottom-0 left-0 right-0 z-50 border-t backdrop-blur-lg",
+      isDark ? "bg-slate-900/95 border-slate-800" : "bg-white/95 border-gray-200"
+    )}>
+      <div className="max-w-lg mx-auto px-2 py-2">
+        <div className="flex justify-around items-center">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const active = isActive(item.page);
+            
+            return (
+              <Link
+                key={item.name}
+                to={createPageUrl(item.page)}
+                className={cn(
+                  "flex flex-col items-center justify-center px-4 py-2 rounded-xl transition-all duration-200 min-w-[64px]",
+                  active
+                    ? isDark
+                      ? "bg-indigo-500/20 text-indigo-400"
+                      : "bg-indigo-50 text-indigo-600"
+                    : isDark
+                    ? "text-gray-400 hover:text-gray-300"
+                    : "text-gray-500 hover:text-gray-700"
+                )}
+              >
+                <Icon className={cn("w-5 h-5 mb-1", active && "animate-bounce-subtle")} />
+                <span className="text-xs font-medium">{item.name}</span>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+    </nav>
+  );
+}

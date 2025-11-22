@@ -1,0 +1,376 @@
+import React, { useState, useEffect } from 'react';
+import { base44 } from '@/api/base44Client';
+import { Upload, FileText, Loader2, CheckCircle2, AlertCircle, Plus, Save } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import BottomNav from '@/components/layout/BottomNav';
+import HorizontalProductEntry from '@/components/products/HorizontalProductEntry';
+import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
+
+export default function UploadData() {
+  const [isDark, setIsDark] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [extracting, setExtracting] = useState(false);
+  const [extractedRows, setExtractedRows] = useState([]);
+  const [recentManualEntries, setRecentManualEntries] = useState([]);
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('smartbiz_theme');
+    if (savedTheme) setIsDark(savedTheme === 'dark');
+    
+    const savedEntries = localStorage.getItem('smartbiz_manual_entries');
+    if (savedEntries) {
+      try {
+        setRecentManualEntries(JSON.parse(savedEntries));
+      } catch (e) {}
+    }
+  }, []);
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    setExtractedRows([]);
+
+    try {
+      // Upload file
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      
+      setExtracting(true);
+      
+      // Extract data using AI
+      const extractionResult = await base44.integrations.Core.ExtractDataFromUploadedFile({
+        file_url,
+        json_schema: {
+          type: "object",
+          properties: {
+            rows: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  slNo: { type: "string" },
+                  productName: { type: "string" },
+                  category: { type: "string" },
+                  costPrice: { type: "number" },
+                  sellPrice: { type: "number" },
+                  mrp: { type: "number" },
+                  quantity: { type: "number" },
+                  discount: { type: "number" },
+                  taxPercent: { type: "number" },
+                  store: { type: "string" },
+                  date: { type: "string" }
+                }
+              }
+            }
+          }
+        }
+      });
+
+      if (extractionResult.status === 'success' && extractionResult.output) {
+        const rows = extractionResult.output.rows || [];
+        setExtractedRows(rows);
+        
+        // Save document record
+        await base44.entities.UploadedDocument.create({
+          fileName: file.name,
+          fileUrl: file_url,
+          fileType: file.type,
+          extractedData: rows,
+          status: 'Extracted',
+          rowCount: rows.length
+        });
+
+        toast.success(Extracted ${rows.length} products!);
+      } else {
+        toast.error('Failed to extract data from document');
+      }
+    } catch (error) {
+      toast.error('Upload failed. Try manual entry.');
+      console.error(error);
+    } finally {
+      setUploading(false);
+      setExtracting(false);
+    }
+  };
+
+  const handleCellEdit = (index, field, value) => {
+    const updated = [...extractedRows];
+    updated[index][field] = value;
+    setExtractedRows(updated);
+  };
+
+  const handleSaveAll = async () => {
+    if (extractedRows.length === 0) {
+      toast.error('No data to save');
+      return;
+    }
+
+    try {
+      const productsToCreate = extractedRows.map(row => ({
+        slNo: row.slNo || '',
+        name: row.productName || row.name || '',
+        category: row.category || 'General',
+        costPrice: parseFloat(row.costPrice) || 0,
+        sellPrice: parseFloat(row.sellPrice) || 0,
+        mrp: parseFloat(row.mrp) || parseFloat(row.sellPrice) || 0,
+        stock: parseInt(row.quantity) || 0,
+        discount: parseFloat(row.discount) || 0,
+        taxPercent: parseFloat(row.taxPercent) || 0,
+        store: row.store || '',
+        supplierUrl: row.supplierUrl || undefined,
+        tags: []
+      }));
+
+      await base44.entities.Product.bulkCreate(productsToCreate);
+      toast.success(Saved ${productsToCreate.length} products to inventory!);
+      setExtractedRows([]);
+    } catch (error) {
+      toast.error('Failed to save to database. Data cached locally.');
+      localStorage.setItem('smartbiz_cached_products', JSON.stringify(extractedRows));
+    }
+  };
+
+  const handleManualSave = async (productData) => {
+    try {
+      const created = await base44.entities.Product.create(productData);
+
+      // Add to recent entries
+      const newEntry = {
+        slNo: productData.slNo,
+        productName: productData.name,
+        costPrice: productData.costPrice,
+        sellPrice: productData.sellPrice,
+        stock: productData.stock,
+        supplierUrl: productData.supplierUrl
+      };
+      const updated = [newEntry, ...recentManualEntries.slice(0, 4)];
+      setRecentManualEntries(updated);
+      localStorage.setItem('smartbiz_manual_entries', JSON.stringify(updated));
+
+      // Update localStorage inventory
+      const existingInventory = JSON.parse(localStorage.getItem('smartbiz_inventory') || '[]');
+      existingInventory.push(created);
+      localStorage.setItem('smartbiz_inventory', JSON.stringify(existingInventory));
+
+      toast.success('Product added successfully!');
+    } catch (error) {
+      // Cache locally if backend fails
+      const cachedProducts = JSON.parse(localStorage.getItem('smartbiz_cached_products') || '[]');
+      cachedProducts.push(productData);
+      localStorage.setItem('smartbiz_cached_products', JSON.stringify(cachedProducts));
+      
+      toast.error('Could not save to backend; cached locally.');
+      throw error;
+    }
+  };
+
+  return (
+    <div className={cn(
+      "min-h-screen pb-20 transition-colors",
+      isDark ? "bg-slate-900" : "bg-gradient-to-br from-slate-50 to-indigo-50"
+    )}>
+      {/* Header */}
+      <div className={cn(
+        "sticky top-0 z-30 backdrop-blur-lg border-b",
+        isDark ? "bg-slate-900/95 border-slate-800" : "bg-white/95 border-gray-200"
+      )}>
+        <div className="max-w-lg mx-auto px-6 py-4">
+          <h1 className={cn("text-2xl font-bold", isDark ? "text-white" : "text-gray-900")}>
+            Upload Data
+          </h1>
+          <p className={cn("text-sm", isDark ? "text-gray-400" : "text-gray-600")}>
+            Extract product data from invoices
+          </p>
+        </div>
+      </div>
+
+      <div className="max-w-lg mx-auto px-6 py-6 space-y-6">
+        {/* Upload Zone */}
+        <div className={cn(
+          "rounded-2xl p-8 border-2 border-dashed transition-all hover:border-indigo-500",
+          isDark ? "bg-slate-800 border-slate-700" : "bg-white border-gray-300"
+        )}>
+          <input
+            type="file"
+            accept=".jpg,.jpeg,.png,.pdf,.xls,.xlsx,.csv,.docx"
+            onChange={handleFileUpload}
+            disabled={uploading || extracting}
+            className="hidden"
+            id="file-upload"
+          />
+          <label htmlFor="file-upload" className="cursor-pointer block text-center">
+            {uploading || extracting ? (
+              <div className="space-y-3">
+                <Loader2 className="w-12 h-12 mx-auto text-indigo-600 animate-spin" />
+                <p className={cn("font-medium", isDark ? "text-white" : "text-gray-900")}>
+                  {uploading ? 'Uploading...' : 'Extracting data...'}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <Upload className={cn("w-12 h-12 mx-auto", isDark ? "text-indigo-400" : "text-indigo-600")} />
+                <div>
+                  <p className={cn("font-semibold text-lg", isDark ? "text-white" : "text-gray-900")}>
+                    Upload Invoice or Price List
+                  </p>
+                  <p className={cn("text-sm mt-1", isDark ? "text-gray-400" : "text-gray-600")}>
+                    JPG, PNG, PDF, Excel, CSV, DOCX
+                  </p>
+                </div>
+                <Button className="bg-indigo-600 hover:bg-indigo-700">
+                  Select File
+                </Button>
+              </div>
+            )}
+          </label>
+        </div>
+
+        {/* Extracted Data Table */}
+        {extractedRows.length > 0 && (
+          <div className={cn(
+            "rounded-2xl p-6 shadow-lg",
+            isDark ? "bg-slate-800 border border-slate-700" : "bg-white"
+          )}>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                <h3 className={cn("font-bold", isDark ? "text-white" : "text-gray-900")}>
+                  Extracted Data ({extractedRows.length} rows)
+                </h3>
+              </div>
+              <Button onClick={handleSaveAll} className="bg-emerald-600 hover:bg-emerald-700">
+                <Save className="w-4 h-4 mr-2" />
+                Save All
+              </Button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className={cn("border-b", isDark ? "border-slate-700" : "border-gray-200")}>
+                    <th className={cn("text-left p-2 font-semibold", isDark ? "text-gray-300" : "text-gray-700")}>SL</th>
+                    <th className={cn("text-left p-2 font-semibold", isDark ? "text-gray-300" : "text-gray-700")}>Product</th>
+                    <th className={cn("text-left p-2 font-semibold", isDark ? "text-gray-300" : "text-gray-700")}>Cost</th>
+                    <th className={cn("text-left p-2 font-semibold", isDark ? "text-gray-300" : "text-gray-700")}>Sell</th>
+                    <th className={cn("text-left p-2 font-semibold", isDark ? "text-gray-300" : "text-gray-700")}>MRP</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {extractedRows.map((row, index) => (
+                    <tr key={index} className={cn("border-b", isDark ? "border-slate-700" : "border-gray-100")}>
+                      <td className="p-2">
+                        <Input
+                          value={row.slNo || ''}
+                          onChange={(e) => handleCellEdit(index, 'slNo', e.target.value)}
+                          className="h-8 text-xs"
+                        />
+                      </td>
+                      <td className="p-2">
+                        <Input
+                          value={row.productName || row.name || ''}
+                          onChange={(e) => handleCellEdit(index, 'productName', e.target.value)}
+                          className="h-8 text-xs"
+                        />
+                      </td>
+                      <td className="p-2">
+                        <Input
+                          type="number"
+                          value={row.costPrice || ''}
+                          onChange={(e) => handleCellEdit(index, 'costPrice', e.target.value)}
+                          className="h-8 text-xs w-20"
+                        />
+                      </td>
+                      <td className="p-2">
+                        <Input
+                          type="number"
+                          value={row.sellPrice || ''}
+                          onChange={(e) => handleCellEdit(index, 'sellPrice', e.target.value)}
+                          className="h-8 text-xs w-20"
+                        />
+                      </td>
+                      <td className="p-2">
+                        <Input
+                          type="number"
+                          value={row.mrp || ''}
+                          onChange={(e) => handleCellEdit(index, 'mrp', e.target.value)}
+                          className="h-8 text-xs w-20"
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Manual Entry - Horizontal Bar */}
+        <div className={cn(
+          "rounded-2xl p-6 shadow-xl border",
+          isDark ? "bg-slate-800 border-slate-700" : "bg-white border-gray-100"
+        )}>
+          <div className="flex items-center gap-2 mb-2">
+            <div className={cn("p-2 rounded-lg", isDark ? "bg-purple-500/20" : "bg-purple-100")}>
+              <Plus className={cn("w-5 h-5", isDark ? "text-purple-400" : "text-purple-600")} />
+            </div>
+            <h3 className={cn("font-bold text-lg", isDark ? "text-white" : "text-gray-900")}>
+              Quick Add Product
+            </h3>
+          </div>
+          <p className={cn("text-sm mb-4", isDark ? "text-gray-400" : "text-gray-600")}>
+            Add a product in one row when a file is not available
+          </p>
+
+          <HorizontalProductEntry 
+            onProductAdded={handleManualSave}
+            isDark={isDark}
+          />
+
+
+          {/* Recent Manual Entries */}
+          {recentManualEntries.length > 0 && (
+            <div className="mt-6 pt-6 border-t border-gray-200 dark:border-slate-700">
+              <p className={cn("text-xs font-semibold mb-3", isDark ? "text-gray-400" : "text-gray-600")}>
+                Recently added:
+              </p>
+              <div className="space-y-2">
+                {recentManualEntries.map((entry, index) => (
+                  <div
+                    key={index}
+                    className={cn(
+                      "text-sm p-3 rounded-lg flex items-center justify-between",
+                      isDark ? "bg-slate-700" : "bg-gray-50"
+                    )}
+                  >
+                    <div>
+                      <span className={cn("font-medium", isDark ? "text-white" : "text-gray-900")}>
+                        {entry.slNo} · {entry.productName}
+                      </span>
+                      <div className={cn("text-xs mt-1", isDark ? "text-gray-400" : "text-gray-600")}>
+                        Cost ₹{entry.costPrice} • Sell ₹{entry.sellPrice} • Stock: {entry.stock || 0}
+                      </div>
+                    </div>
+                    <div className={cn(
+                      "px-2 py-1 rounded text-xs",
+                      (entry.stock || 0) > 0 
+                        ? "bg-emerald-100 text-emerald-700" 
+                        : "bg-red-100 text-red-700"
+                    )}>
+                      {(entry.stock || 0) > 0 ? 'In Stock' : 'Out of Stock'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <BottomNav isDark={isDark} />
+    </div>
+  );
+}

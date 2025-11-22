@@ -1,0 +1,76 @@
+{
+  "name": "Bill",
+  "type": "object",
+  "properties": {
+    "billNumber": {
+      "type": "string",
+      "description": "Unique bill/invoice number"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "productId": {
+            "type": "string"
+          },
+          "productName": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "price": {
+            "type": "number"
+          },
+          "total": {
+            "type": "number"
+          }
+        }
+      },
+      "description": "Line items in the bill"
+    },
+    "subtotal": {
+      "type": "number",
+      "description": "Subtotal before tax"
+    },
+    "tax": {
+      "type": "number",
+      "description": "Total tax amount"
+    },
+    "discount": {
+      "type": "number",
+      "description": "Total discount applied",
+      "default": 0
+    },
+    "total": {
+      "type": "number",
+      "description": "Final total amount"
+    },
+    "customerName": {
+      "type": "string",
+      "description": "Customer name (optional)"
+    },
+    "customerPhone": {
+      "type": "string",
+      "description": "Customer phone (optional)"
+    },
+    "paymentMethod": {
+      "type": "string",
+      "enum": [
+        "Cash",
+        "Card",
+        "UPI",
+        "Other"
+      ],
+      "default": "Cash"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Completed",
+        "Pending",
+        "Cancelled"
+      ],
+      "default": "Completed"
+ 

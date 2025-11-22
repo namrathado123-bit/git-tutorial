@@ -1,0 +1,56 @@
+import React from 'react';
+import { AlertCircle, TrendingUp, Tag, Users } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+const iconMap = {
+  stock: AlertCircle,
+  demand: TrendingUp,
+  discount: Tag,
+  customer: Users
+};
+
+const colorMap = {
+  critical: 'bg-red-500',
+  warning: 'bg-amber-500',
+  info: 'bg-blue-500',
+  success: 'bg-emerald-500'
+};
+
+export default function CriticalAlert({ title, description, priority, type, isDark, onClick }) {
+  const Icon = iconMap[type] || AlertCircle;
+  const color = colorMap[priority] || colorMap.info;
+
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "w-full text-left p-4 rounded-xl transition-all duration-200 hover:scale-102 hover:shadow-lg",
+        isDark ? "bg-slate-800 border border-slate-700" : "bg-white border border-gray-100 shadow-sm"
+      )}
+    >
+      <div className="flex items-start gap-3">
+        <div className={cn("p-2 rounded-lg", color, "bg-opacity-20")}>
+          <Icon className={cn("w-5 h-5", color.replace('bg-', 'text-'))} />
+        </div>
+        
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <h4 className={cn("font-semibold text-sm", isDark ? "text-white" : "text-gray-900")}>
+              {title}
+            </h4>
+            <span className={cn(
+              "px-2 py-0.5 rounded-full text-xs font-medium uppercase",
+              color,
+              "text-white"
+            )}>
+              {priority}
+            </span>
+          </div>
+          <p className={cn("text-sm", isDark ? "text-gray-400" : "text-gray-600")}>
+            {description}
+          </p>
+        </div>
+      </div>
+    </button>
+  );
+}

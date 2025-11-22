@@ -1,0 +1,61 @@
+import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Check, X } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+export default function StockEditInput({ initialStock, onSave, onCancel, isDark }) {
+  const [value, setValue] = useState(initialStock.toString());
+
+  const handleSave = () => {
+    const newStock = parseInt(value);
+    if (isNaN(newStock)) {
+      onCancel();
+      return;
+    }
+    onSave(newStock);
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleSave();
+    } else if (e.key === 'Escape') {
+      onCancel();
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <Input
+        type="number"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={handleKeyPress}
+        autoFocus
+        className={cn(
+          "h-8 w-20 text-sm rounded-xl",
+          isDark ? "bg-slate-700 border-slate-600 text-white" : "bg-white"
+        )}
+        placeholder="Stock"
+      />
+      <Button
+        size="icon"
+        onClick={handleSave}
+        className="h-8 w-8 rounded-xl bg-emerald-600 hover:bg-emerald-700 shadow-md"
+      >
+        <Check className="w-4 h-4" />
+      </Button>
+      <Button
+        size="icon"
+        variant="outline"
+        onClick={onCancel}
+        className={cn(
+          "h-8 w-8 rounded-xl",
+          isDark && "border-slate-600"
+        )}
+      >
+        <X className="w-4 h-4" />
+      </Button>
+    </div>
+  );
+}

@@ -1,0 +1,272 @@
+import React, { useState } from 'react';
+import { X, Upload, Moon, Sun, Bell, BellOff, LogOut, Camera } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
+import { base44 } from '@/api/base44Client';
+import { toast } from 'sonner';
+
+export default function ProfilePanel({ isOpen, onClose, user, onUpdate, isDark, onToggleTheme }) {
+  const [uploading, setUploading] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [formData, setFormData] = useState({
+    full_name: user?.full_name || '',
+    businessName: user?.businessName || '',
+    phone: user?.phone || ''
+  });
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      await base44.auth.updateMe({ profilePictureUrl: file_url });
+      onUpdate();
+      toast.success('Profile picture updated!');
+    } catch (error) {
+      toast.error('Failed to upload image');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    try {
+      await base44.auth.updateMe(formData);
+      onUpdate();
+      setEditMode(false);
+      toast.success('Profile updated!');
+    } catch (error) {
+      toast.error('Failed to update profile');
+    }
+  };
+
+  const handleToggleNotifications = async () => {
+    try {
+      await base44.auth.updateMe({ 
+        notificationsEnabled: !user?.notificationsEnabled 
+      });
+      onUpdate();
+      toast.success(`Notifications ${user?.notificationsEnabled ? 'disabled' : 'enabled'}`);
+    } catch (error) {
+      toast.error('Failed to update settings');
+    }
+  };
+
+  const handleLogout = () => {
+    base44.auth.logout();
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div 
+        className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      
+      {/* Panel */}
+      <div className={cn(
+        "fixed top-0 right-0 h-full w-full max-w-md z-50 shadow-2xl transform transition-transform duration-300",
+        isDark ? "bg-slate-900" : "bg-white"
+      )}>
+        <div className="flex flex-col h-full">
+          {/* Header */}
+          <div className={cn(
+            "flex items-center justify-between p-6 border-b",
+            isDark ? "border-slate-800" : "border-gray-200"
+          )}>
+            <h2 className={cn(
+              "text-xl font-bold",
+              isDark ? "text-white" : "text-gray-900"
+            )}>
+              Profile Settings
+            </h2>
+            <Button variant="ghost" size="icon" onClick={onClose}>
+              <X className="w-5 h-5" />
+            </Button>
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            {/* Profile Picture */}
+            <div className="flex flex-col items-center space-y-3">
+              <div className="relative">
+                <div className={cn(
+                  "w-24 h-24 rounded-full flex items-center justify-center text-3xl font-bold overflow-hidden",
+                  isDark ? "bg-indigo-500/20 text-indigo-400" : "bg-indigo-100 text-indigo-600"
+                )}>
+                  {user?.profilePictureUrl ? (
+                    <img src={user.profilePictureUrl} alt="Profile" className="w-full h-full object-cover" />
+                  ) : (
+                    user?.full_name?.[0]?.toUpperCase() || 'U'
+                  )}
+                </div>
+                <label className={cn(
+                  "absolute bottom-0 right-0 w-8 h-8 rounded-full flex items-center justify-center cursor-pointer shadow-lg",
+                  isDark ? "bg-indigo-600 hover:bg-indigo-700" : "bg-indigo-500 hover:bg-indigo-600"
+                )}>
+                  <Camera className="w-4 h-4 text-white" />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleFileUpload}
+                    disabled={uploading}
+                  />
+                </label>
+              </div>
+              {uploading && <p className="text-sm text-gray-500">Uploading...</p>}
+            </div>
+
+            {/* Profile Info */}
+            <div className="space-y-4">
+              <div>
+                <Label>Full Name</Label>
+                {editMode ? (
+                  <Input
+                    value={formData.full_name}
+                    onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                    className="mt-1"
+                  />
+                ) : (
+                  <p className={cn("mt-1 font-medium", isDark ? "text-white" : "text-gray-900")}>
+                    {user?.full_name || 'Not set'}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <Label>Business Name</Label>
+                {editMode ? (
+                  <Input
+                    value={formData.businessName}
+                    onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
+                    placeholder="Your Shop Name"
+                    className="mt-1"
+                  />
+                ) : (
+                  <p className={cn("mt-1 font-medium", isDark ? "text-white" : "text-gray-900")}>
+                    {user?.businessName || 'Not set'}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <Label>Email</Label>
+                <p className={cn("mt-1 font-medium", isDark ? "text-gray-400" : "text-gray-600")}>
+                  {user?.email}
+                </p>
+              </div>
+
+              <div>
+                <Label>Phone</Label>
+                {editMode ? (
+                  <Input
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    placeholder="+91 XXXXX XXXXX"
+                    className="mt-1"
+                  />
+                ) : (
+                  <p className={cn("mt-1 font-medium", isDark ? "text-white" : "text-gray-900")}>
+                    {user?.phone || 'Not set'}
+                  </p>
+                )}
+              </div>
+
+              {editMode ? (
+                <div className="flex gap-2">
+                  <Button onClick={handleSave} className="flex-1">Save Changes</Button>
+                  <Button variant="outline" onClick={() => setEditMode(false)}>Cancel</Button>
+                </div>
+              ) : (
+                <Button variant="outline" onClick={() => setEditMode(true)} className="w-full">
+                  Edit Profile
+                </Button>
+              )}
+            </div>
+
+            {/* Settings */}
+            <div className={cn(
+              "space-y-3 pt-6 border-t",
+              isDark ? "border-slate-800" : "border-gray-200"
+            )}>
+              <h3 className={cn("font-semibold", isDark ? "text-white" : "text-gray-900")}>
+                Settings
+              </h3>
+
+              {/* Dark Mode Toggle */}
+              <button
+                onClick={onToggleTheme}
+                className={cn(
+                  "w-full flex items-center justify-between p-4 rounded-xl transition-colors",
+                  isDark ? "bg-slate-800 hover:bg-slate-700" : "bg-gray-50 hover:bg-gray-100"
+                )}
+              >
+                <div className="flex items-center gap-3">
+                  {isDark ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+                  <span className={cn("font-medium", isDark ? "text-white" : "text-gray-900")}>
+                    Dark Mode
+                  </span>
+                </div>
+                <div className={cn(
+                  "w-12 h-6 rounded-full transition-colors relative",
+                  isDark ? "bg-indigo-600" : "bg-gray-300"
+                )}>
+                  <div className={cn(
+                    "absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform",
+                    isDark ? "translate-x-6" : "translate-x-0.5"
+                  )} />
+                </div>
+              </button>
+
+              {/* Notifications Toggle */}
+              <button
+                onClick={handleToggleNotifications}
+                className={cn(
+                  "w-full flex items-center justify-between p-4 rounded-xl transition-colors",
+                  isDark ? "bg-slate-800 hover:bg-slate-700" : "bg-gray-50 hover:bg-gray-100"
+                )}
+              >
+                <div className="flex items-center gap-3">
+                  {user?.notificationsEnabled ? 
+                    <Bell className="w-5 h-5" /> : 
+                    <BellOff className="w-5 h-5" />
+                  }
+                  <span className={cn("font-medium", isDark ? "text-white" : "text-gray-900")}>
+                    Notifications
+                  </span>
+                </div>
+                <div className={cn(
+                  "w-12 h-6 rounded-full transition-colors relative",
+                  user?.notificationsEnabled ? "bg-indigo-600" : "bg-gray-300"
+                )}>
+                  <div className={cn(
+                    "absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform",
+                    user?.notificationsEnabled ? "translate-x-6" : "translate-x-0.5"
+                  )} />
+                </div>
+              </button>
+            </div>
+
+            {/* Logout */}
+            <Button
+              variant="destructive"
+              className="w-full"
+              onClick={handleLogout}
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Logout
+            </Button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}

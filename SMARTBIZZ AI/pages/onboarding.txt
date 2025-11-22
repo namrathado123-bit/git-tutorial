@@ -1,0 +1,132 @@
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
+import { Button } from '@/components/ui/button';
+import { ChevronRight, Sparkles, TrendingUp, Bot, ArrowRight } from 'lucide-react';
+import { base44 } from '@/api/base44Client';
+import { cn } from '@/lib/utils';
+
+const slides = [
+  {
+    icon: Sparkles,
+    title: 'Upload & Extract',
+    description: 'Drag and drop invoices from DMart, Smart, Big Bazaar - AI extracts all product data automatically',
+    color: 'bg-gradient-to-br from-indigo-500 to-purple-600'
+  },
+  {
+    icon: TrendingUp,
+    title: 'Grow Your Business',
+    description: 'Real-time KPIs, sales tracking, inventory health - everything you need to increase profits',
+    color: 'bg-gradient-to-br from-emerald-500 to-teal-600'
+  },
+  {
+    icon: Bot,
+    title: 'AI Assistant',
+    description: 'Smart recommendations for restocking, pricing, discounts - like having a business consultant 24/7',
+    color: 'bg-gradient-to-br from-amber-500 to-orange-600'
+  }
+];
+
+export default function Onboarding() {
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const navigate = useNavigate();
+
+  const handleNext = () => {
+    if (currentSlide < slides.length - 1) {
+      setCurrentSlide(currentSlide + 1);
+    } else {
+      handleComplete();
+    }
+  };
+
+  const handleComplete = async () => {
+    try {
+      await base44.auth.updateMe({ hasCompletedOnboarding: true });
+      navigate(createPageUrl('Home'));
+    } catch (error) {
+      navigate(createPageUrl('Home'));
+    }
+  };
+
+  const slide = slides[currentSlide];
+  const Icon = slide.icon;
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50 flex flex-col">
+      <div className="flex-1 flex items-center justify-center p-6">
+        <div className="w-full max-w-md">
+          {/* Illustration */}
+          <div className="mb-12 flex justify-center">
+            <div className={cn(
+              "w-32 h-32 rounded-3xl flex items-center justify-center shadow-2xl transform hover:scale-105 transition-transform duration-300",
+              slide.color
+            )}>
+              <Icon className="w-16 h-16 text-white" />
+            </div>
+          </div>
+
+          {/* Content */}
+          <div className="text-center space-y-4 mb-12">
+            <h1 className="text-3xl font-bold text-gray-900">
+              {slide.title}
+            </h1>
+            <p className="text-lg text-gray-600 leading-relaxed">
+              {slide.description}
+            </p>
+          </div>
+
+          {/* Dots */}
+          <div className="flex justify-center gap-2 mb-8">
+            {slides.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => setCurrentSlide(index)}
+                className={cn(
+                  "h-2 rounded-full transition-all duration-300",
+                  index === currentSlide 
+                    ? "w-8 bg-indigo-600" 
+                    : "w-2 bg-gray-300 hover:bg-gray-400"
+                )}
+              />
+            ))}
+          </div>
+
+          {/* Actions */}
+          <div className="space-y-3">
+            <Button
+              onClick={handleNext}
+              className="w-full h-14 text-lg bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-lg"
+            >
+              {currentSlide === slides.length - 1 ? (
+                <>
+                  Get Started
+                  <ArrowRight className="ml-2 w-5 h-5" />
+                </>
+              ) : (
+                <>
+                  Next
+                  <ChevronRight className="ml-2 w-5 h-5" />
+                </>
+              )}
+            </Button>
+
+            <Button
+              variant="ghost"
+              onClick={handleComplete}
+              className="w-full text-gray-600 hover:text-gray-900"
+            >
+              Skip to Dashboard
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="p-6 text-center">
+        <p className="text-sm text-gray-500">
+          SmartBiz AI • Your Intelligent Business Partner
+        </p>
+      </div>
+    </div>
+  );
+}
